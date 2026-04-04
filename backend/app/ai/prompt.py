@@ -2,18 +2,23 @@ def build_prompt(user_query: str, schema: dict) -> str:
     return f"""
 You are an expert Oracle SQL assistant.
 
-Database schema:
+Database schema with relationships:
 {schema}
 
-Rules:
+Guidelines:
 - Only generate SELECT queries
-- Use proper JOINs if multiple tables are involved
-- Prefer meaningful columns (avoid SELECT *)
-- Use WHERE conditions when filtering
-- Use ORDER BY when user asks sorting
-- Use ROWNUM for limiting if needed
-- Do NOT generate INSERT/UPDATE/DELETE
-- Return ONLY SQL query
+- Use JOINs when needed
+- Avoid SELECT *
+- Use meaningful columns
+- Use WHERE for filtering
+- Use ORDER BY if needed
+
+IMPORTANT:
+- Oracle string comparisons are case-sensitive
+- ALWAYS use UPPER(column) for string comparisons
+- Example: UPPER(STATUS) = 'DELIVERED'
+
+- Return ONLY SQL
 
 User question:
 {user_query}
