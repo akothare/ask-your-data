@@ -6,30 +6,23 @@ from app.ai.sql_generator import SQLGenerator
 from app.services.query_executor import QueryExecutor
 from app.services.sql_validator import SQLValidator
 from app.services.relationship_explainer import RelationshipExplainer
+from app.services.session_store import SessionStore
 
 app = FastAPI()
 
-# Load schema once
 SCHEMA = SchemaLoader.load_schema()
 
 
 class QueryRequest(BaseModel):
     query: str
+    session_id: str = "default"   # 🔥 NEW
 
 
-# 🔥 NEW: Extract tables robustly
 def extract_tables_from_query(query: str, schema: dict):
     query = query.lower()
-    matched_tables = []
-
-    for table in schema.keys():
-        if table.lower() in query:
-            matched_tables.append(table)
-
-    return matched_tables
+    return [t for t in schema if t.lower() in query]
 
 
-# 🔥 UPDATED: better detection
 def is_relationship_query(query: str):
     keywords = ["relationship", "related", "how are", "connection"]
     return any(k in query.lower() for k in keywords)
@@ -37,16 +30,16 @@ def is_relationship_query(query: str):
 
 @app.post("/chat")
 def chat(request: QueryRequest):
-    user_query = request.query
 
-    # 🔍 DEBUG (keep for now)
-    print("SCHEMA TABLES:", list(SCHEMA.keys()))
-    print("USER QUERY:", user_query)
+    user_query = request.query
+    session_id = request.session_id
+
+    print("\n--- NEW REQUEST ---")
+    print("SESSION:", session_id)
 
     found_tables = extract_tables_from_query(user_query, SCHEMA)
-    print("MATCHED TABLES:", found_tables)
 
-    # ✅ Step 1: Relationship explanation (BEFORE AI)
+    # ✅ Relationship handling
     if is_relationship_query(user_query) and len(found_tables) >= 2:
         explanation = RelationshipExplainer.explain(
             SCHEMA,
@@ -55,23 +48,32 @@ def chat(request: QueryRequest):
         )
         return {"answer": explanation}
 
-    # ✅ Step 2: SQL flow
+    previous_sql = SessionStore.get_last_query(session_id)
+    print("PREVIOUS SQL:", previous_sql)
+
     attempts = 0
     max_attempts = 2
     last_error = None
 
     while attempts < max_attempts:
         try:
-            sql = SQLGenerator.generate_sql(user_query, SCHEMA, last_error)
-
-            print("FINAL SQL:", sql)
+            sql = SQLGenerator.generate_sql(
+                user_query,
+                SCHEMA,
+                previous_sql,
+                last_error
+            )
 
             SQLValidator.validate(sql)
+
             result = QueryExecutor.execute(sql)
+
+            # 🔥 Store for next turn
+            SessionStore.set_last_query(session_id, sql)
 
             return {
                 "data": result,
-                "attempts": attempts + 1
+                "session_id": session_id
             }
 
         except Exception as e:
