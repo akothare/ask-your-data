@@ -5,8 +5,6 @@ const Chat = () => {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-
-  // 🔥 Persistent session
   const [sessionId] = useState(() => "session-" + Date.now());
 
   const handleSend = async () => {
@@ -14,30 +12,29 @@ const Chat = () => {
     if (!input.trim()) return;
 
     const userMessage = { role: "user", text: input };
-
     setMessages(prev => [...prev, userMessage]);
 
     try {
       const response = await sendMessage(input, sessionId);
 
-      let aiText = "";
+      let aiMessage;
 
       if (response.answer) {
-        aiText = response.answer;
-      } else if (response.data) {
-        aiText = JSON.stringify(response.data, null, 2);
-      } else if (response.error) {
-        aiText = response.error;
-      }
+        aiMessage = { role: "ai", type: "text", content: response.answer };
 
-      const aiMessage = { role: "ai", text: aiText };
+      } else if (response.data) {
+        aiMessage = { role: "ai", type: "table", content: response.data };
+
+      } else {
+        aiMessage = { role: "ai", type: "text", content: response.error };
+      }
 
       setMessages(prev => [...prev, aiMessage]);
 
     } catch (error) {
       setMessages(prev => [
         ...prev,
-        { role: "ai", text: "Error connecting to backend" }
+        { role: "ai", type: "text", content: "Error connecting to backend" }
       ]);
     }
 
@@ -59,7 +56,16 @@ const Chat = () => {
               background: msg.role === "user" ? "#DCF8C6" : "#F1F0F0"
             }}
           >
-            <pre style={{ margin: 0 }}>{msg.text}</pre>
+            {msg.role === "user" && <span>{msg.text}</span>}
+
+            {msg.role === "ai" && msg.type === "text" && (
+              <span>{msg.content}</span>
+            )}
+
+            {msg.role === "ai" && msg.type === "table" && (
+              <DataTable data={msg.content} />
+            )}
+
           </div>
         ))}
       </div>
@@ -80,16 +86,54 @@ const Chat = () => {
   );
 };
 
+
+// 🔥 NEW COMPONENT
+const DataTable = ({ data }) => {
+
+  if (!data || data.length === 0) {
+    return <span>No data found</span>;
+  }
+
+  const columns = Object.keys(data[0]);
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={styles.table}>
+        <thead>
+          <tr>
+            {columns.map(col => (
+              <th key={col} style={styles.th}>{col}</th>
+            ))}
+          </tr>
+        </thead>
+
+        <tbody>
+          {data.map((row, i) => (
+            <tr key={i}>
+              {columns.map(col => (
+                <td key={col} style={styles.td}>
+                  {String(row[col])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+
 const styles = {
   container: {
-    width: "600px",
+    width: "700px",
     margin: "50px auto",
     display: "flex",
     flexDirection: "column",
     fontFamily: "Arial"
   },
   chatBox: {
-    height: "400px",
+    height: "450px",
     border: "1px solid #ccc",
     padding: "10px",
     overflowY: "auto",
@@ -100,7 +144,7 @@ const styles = {
   message: {
     padding: "10px",
     borderRadius: "8px",
-    maxWidth: "80%"
+    maxWidth: "90%"
   },
   inputBox: {
     display: "flex",
@@ -112,6 +156,21 @@ const styles = {
   },
   button: {
     padding: "10px 20px"
+  },
+
+  // 🔥 Table styles
+  table: {
+    borderCollapse: "collapse",
+    width: "100%"
+  },
+  th: {
+    border: "1px solid #ddd",
+    padding: "8px",
+    background: "#f2f2f2"
+  },
+  td: {
+    border: "1px solid #ddd",
+    padding: "8px"
   }
 };
 
