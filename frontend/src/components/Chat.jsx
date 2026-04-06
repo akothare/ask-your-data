@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { sendMessage } from "../services/api";
+
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
   BarChart, Bar
@@ -9,99 +10,126 @@ const Chat = () => {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const [sessionId] = useState(() => "session-" + Date.now());
 
+  const chatEndRef = useRef(null);
+
+  // Auto scroll
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
   const handleSend = async () => {
 
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userMessage = { role: "user", text: input };
     setMessages(prev => [...prev, userMessage]);
 
+    setInput("");
+    setLoading(true);
+
     try {
       const response = await sendMessage(input, sessionId);
 
-      let aiMessage;
-
       const res = response.response;
 
-      if (res.type === "text") {
-        aiMessage = { role: "ai", type: "text", content: res.content };
-
-      } else if (res.type === "mixed") {
-        aiMessage = {
-          role: "ai",
-          type: "mixed",
-          summary: res.summary,
-          data: res.data
-        };
-
-      } else if (res.type === "table") {
-        aiMessage = {
-          role: "ai",
-          type: "table",
-          content: res.data
-        };
-      }
+      let aiMessage = {
+        role: "ai",
+        type: res.type,
+        content: res.data || null,
+        summary: res.summary || null,
+        text: res.content || null,
+        chart: response.chart || null
+      };
 
       setMessages(prev => [...prev, aiMessage]);
 
     } catch (error) {
       setMessages(prev => [
         ...prev,
-        { role: "ai", type: "text", content: "Error connecting to backend" }
+        { role: "ai", type: "text", text: "Something went wrong. Please try again." }
       ]);
     }
 
-    setInput("");
+    setLoading(false);
   };
 
   return (
     <div style={styles.container}>
 
-      <h2>AI Database Assistant</h2>
+      <div style={styles.header}>
+        AskYourDB
+      </div>
 
       <div style={styles.chatBox}>
+
         {messages.map((msg, index) => (
           <div
             key={index}
             style={{
-              ...styles.message,
-              alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-              background: msg.role === "user" ? "#DCF8C6" : "#F1F0F0"
+              ...styles.messageRow,
+              justifyContent: msg.role === "user" ? "flex-end" : "flex-start"
             }}
           >
-            {msg.role === "user" && <span>{msg.text}</span>}
+            <div
+              style={{
+                ...styles.bubble,
+                background: msg.role === "user" ? "#2563eb" : "#1e293b",
+                color: "#fff"
+              }}
+            >
+              {msg.role === "user" && <span>{msg.text}</span>}
 
-            {msg.role === "ai" && msg.type === "text" && (
-              <span>{msg.content}</span>
-            )}
+              {msg.role === "ai" && (
+                <>
 
-            {msg.role === "ai" && msg.type === "table" && (
-              <DataTable data={msg.content} />
-            )}
+                  {/* 🔹 TEXT ONLY */}
+                  {msg.type === "text" && (
+                    <span>{msg.text}</span>
+                  )}
 
-            {msg.role === "ai" && msg.type === "chart" && (
-              <ChartView data={msg.content} config={msg.chart} />
-            )}
+                  {/* 🔹 SUMMARY (ONLY ONCE) */}
+                  {msg.summary && (
+                    <p style={{ marginBottom: "10px" }}>{msg.summary}</p>
+                  )}
 
-            {msg.role === "ai" && msg.type === "mixed" && (
-              <>
-                <p>{msg.summary}</p>
-                <DataTable data={msg.data} />
-              </>
-            )}
+                  {/* 🔹 CHART */}
+                  {msg.chart && (
+                    <ChartView data={msg.content} config={msg.chart} />
+                  )}
 
+                  {/* 🔹 TABLE */}
+                  {(!msg.chart && (msg.type === "table" || msg.type === "mixed")) && (
+                    <DataTable data={msg.content} />
+                  )}
+
+                </>
+              )}
+
+            </div>
           </div>
         ))}
+
+        {loading && (
+          <div style={styles.messageRow}>
+            <div style={styles.loadingBubble}>
+              Thinking...
+            </div>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
       </div>
 
-      <div style={styles.inputBox}>
+      <div style={styles.inputContainer}>
         <input
           style={styles.input}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask something about your database..."
+          placeholder="Ask about your database..."
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
         />
         <button style={styles.button} onClick={handleSend}>
           Send
@@ -113,7 +141,6 @@ const Chat = () => {
 };
 
 
-// 🔥 NEW COMPONENT
 const DataTable = ({ data }) => {
 
   if (!data || data.length === 0) {
@@ -123,7 +150,7 @@ const DataTable = ({ data }) => {
   const columns = Object.keys(data[0]);
 
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div style={{ overflowX: "auto", marginTop: "10px" }}>
       <table style={styles.table}>
         <thead>
           <tr>
@@ -149,6 +176,7 @@ const DataTable = ({ data }) => {
   );
 };
 
+
 const ChartView = ({ data, config }) => {
 
   if (!config) return null;
@@ -162,7 +190,7 @@ const ChartView = ({ data, config }) => {
         <XAxis dataKey={x} />
         <YAxis />
         <Tooltip />
-        <Line type="monotone" dataKey={y} />
+        <Line dataKey={y} stroke="#2563eb" />
       </LineChart>
     );
   }
@@ -174,7 +202,7 @@ const ChartView = ({ data, config }) => {
         <XAxis dataKey={x} />
         <YAxis />
         <Tooltip />
-        <Bar dataKey={y} />
+        <Bar dataKey={y} fill="#2563eb" />
       </BarChart>
     );
   }
@@ -185,50 +213,73 @@ const ChartView = ({ data, config }) => {
 
 const styles = {
   container: {
-    width: "700px",
-    margin: "50px auto",
+    height: "100vh",
     display: "flex",
     flexDirection: "column",
+    background: "#0f172a",
+    color: "#fff",
     fontFamily: "Arial"
   },
+  header: {
+    padding: "15px",
+    fontSize: "20px",
+    fontWeight: "bold",
+    borderBottom: "1px solid #1e293b"
+  },
   chatBox: {
-    height: "450px",
-    border: "1px solid #ccc",
-    padding: "10px",
+    flex: 1,
     overflowY: "auto",
+    padding: "20px",
     display: "flex",
     flexDirection: "column",
-    gap: "10px"
+    gap: "15px"
   },
-  message: {
+  messageRow: {
+    display: "flex"
+  },
+  bubble: {
+    padding: "12px 16px",
+    borderRadius: "12px",
+    maxWidth: "70%"
+  },
+  loadingBubble: {
     padding: "10px",
-    borderRadius: "8px",
-    maxWidth: "90%"
+    background: "#1e293b",
+    borderRadius: "10px"
   },
-  inputBox: {
+  inputContainer: {
     display: "flex",
-    marginTop: "10px"
+    padding: "15px",
+    borderTop: "1px solid #1e293b"
   },
   input: {
     flex: 1,
-    padding: "10px"
+    padding: "12px",
+    borderRadius: "8px",
+    border: "none",
+    outline: "none",
+    marginRight: "10px"
   },
   button: {
-    padding: "10px 20px"
+    padding: "12px 20px",
+    background: "#2563eb",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer"
   },
-
-  // 🔥 Table styles
   table: {
     borderCollapse: "collapse",
-    width: "100%"
+    width: "100%",
+    marginTop: "10px"
   },
   th: {
-    border: "1px solid #ddd",
+    border: "1px solid #334155",
     padding: "8px",
-    background: "#f2f2f2"
+    background: "#334155"
   },
   td: {
-    border: "1px solid #ddd",
+    border: "1px solid #334155",
     padding: "8px"
   }
 };
