@@ -81,21 +81,22 @@ const Chat = () => {
               style={{
                 ...styles.bubble,
                 background: msg.role === "user" ? "#2563eb" : "#1e293b",
-                color: "#fff"
               }}
             >
 
               {/* USER */}
-              {msg.role === "user" && <span>{msg.text}</span>}
+              {msg.role === "user" && (
+                <div style={styles.userText}>{msg.text}</div>
+              )}
 
               {/* AI */}
               {msg.role === "ai" && (
-                <>
+                <div style={styles.aiContainer}>
 
                   {/* SQL */}
                   {msg.type === "sql" && (
                     <>
-                      <p style={styles.text}>{msg.text}</p>
+                      <div style={styles.text}>{msg.text}</div>
 
                       <div style={styles.codeContainer}>
                         <pre style={styles.codeBlock}>
@@ -107,12 +108,18 @@ const Chat = () => {
 
                   {/* TEXT */}
                   {msg.type === "text" && msg.text && (
-                    <p style={styles.text}>{msg.text}</p>
+                    <div style={styles.text}>
+                      {msg.text}
+                    </div>
                   )}
 
-                  {/* SUMMARY */}
+                  {/* SUMMARY (MULTILINE FIX) */}
                   {msg.summary && (
-                    <p style={styles.summary}>{msg.summary}</p>
+                    <div style={styles.text}>
+                      {msg.summary.split("\n").map((line, i) => (
+                        <div key={i}>{line}</div>
+                      ))}
+                    </div>
                   )}
 
                   {/* CHART */}
@@ -122,12 +129,15 @@ const Chat = () => {
                       <ChartView data={msg.content} config={msg.chart} />
                     )}
 
-                  {/* TABLE */}
-                  {(msg.type === "table" || msg.type === "mixed") && (
-                    <DataTable data={msg.content} />
-                  )}
+                  {/* TABLE — ONLY IF VALID */}
+                  {(msg.type === "table" || msg.type === "mixed") &&
+                    msg.content &&
+                    Array.isArray(msg.content) &&
+                    msg.content.length > 0 && (
+                      <DataTable data={msg.content} />
+                    )}
 
-                </>
+                </div>
               )}
 
             </div>
@@ -165,10 +175,6 @@ const Chat = () => {
 
 // TABLE
 const DataTable = ({ data }) => {
-
-  if (!data || data.length === 0) {
-    return <span>No data found</span>;
-  }
 
   const columns = Object.keys(data[0]);
 
@@ -263,37 +269,42 @@ const styles = {
     gap: "15px"
   },
   messageRow: {
-    display: "flex"
+    display: "flex",
+    width: "100%"
   },
   bubble: {
     padding: "12px 16px",
     borderRadius: "12px",
-    maxWidth: "70%"
+    maxWidth: "70%",
+    textAlign: "left" // 🔥 FIXED
+  },
+  aiContainer: {
+    textAlign: "left",
+    width: "100%"
+  },
+  userText: {
+    textAlign: "right"
   },
   text: {
-    margin: 0,
-    whiteSpace: "pre-wrap"
+    textAlign: "left",
+    whiteSpace: "pre-wrap",
+    lineHeight: "1.5"
   },
   summary: {
-    margin: "8px 0",
-    color: "#e2e8f0"
+    textAlign: "left"
   },
-
-  // 🔥 NEW
   codeContainer: {
     overflowX: "auto",
     marginTop: "10px"
   },
-
   codeBlock: {
     background: "#020617",
     padding: "12px",
     borderRadius: "8px",
     fontFamily: "monospace",
-    whiteSpace: "pre",   // 🔥 IMPORTANT (no wrapping)
-    minWidth: "max-content" // 🔥 prevents shrink
+    whiteSpace: "pre",
+    minWidth: "max-content"
   },
-
   loadingBubble: {
     padding: "10px",
     background: "#1e293b",
