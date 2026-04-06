@@ -95,7 +95,9 @@ const Chat = () => {
 
                   {/* TEXT ONLY */}
                   {msg.type === "text" && (
-                    <p style={styles.text}>{msg.text}</p>
+                    <pre style={styles.preText}>
+                      {msg.text}
+                    </pre>
                   )}
 
                   {/* SUMMARY */}
@@ -263,6 +265,12 @@ const styles = {
   text: {
     margin: 0,
     textAlign: "left"
+  },
+  preText: {
+    margin: 0,
+    whiteSpace: "pre-wrap",
+    fontFamily: "inherit",
+    lineHeight: "1.5"
   },
   summary: {
     margin: "0 0 8px 0",

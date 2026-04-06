@@ -3,7 +3,7 @@ class SchemaExplainer:
     @staticmethod
     def explain(schema, table_name=None):
 
-        # 🔹 If specific table requested
+        # 🔹 Specific table
         if table_name and table_name in schema:
 
             table = schema[table_name]
@@ -13,24 +13,27 @@ class SchemaExplainer:
 
             response = f"The {table_name} table contains the following columns:\n\n"
 
-            # Columns
             for col in columns:
-                response += f"- {col}\n"
+                if isinstance(col, dict):
+                    name = col.get("name", "")
+                    dtype = col.get("type", "")
+                    response += f"• {name} ({dtype})\n"
+                else:
+                    response += f"• {col}\n"
 
-            # Relationships (if any)
             if foreign_keys:
                 response += "\nRelationships:\n"
                 for fk in foreign_keys:
-                    response += f"- {fk['column']} → {fk['ref_table']}.{fk['ref_column']}\n"
+                    response += f"• {fk['column']} → {fk['ref_table']}.{fk['ref_column']}\n"
 
-            return response
+            return response.strip()
 
-        # 🔹 General schema overview
+        # 🔹 General schema
         tables = list(schema.keys())
 
         response = f"The database contains {len(tables)} tables:\n\n"
 
         for table in tables:
-            response += f"- {table}\n"
+            response += f"• {table}\n"
 
-        return response
+        return response.strip()
