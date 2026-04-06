@@ -9,30 +9,33 @@ class IntentClassifier:
 
         query = user_query.lower().strip()
 
-        # 🔥 Step 1: Fast rule-based (cheap)
+        # 🔥 FAST RULES
         if len(query) <= 3:
             return "conversational"
+
+        if any(word in query for word in ["sql", "query", "write query", "generate query"]):
+            return "sql_generation"
 
         simple_ack = ["ok", "okay", "thanks", "thank you", "cool", "great"]
         if query in simple_ack:
             return "conversational"
 
-        # 🔥 Step 2: AI-based classification
+        # 🔥 AI FALLBACK
         client = AIClient.get_client()
 
         prompt = f"""
 Classify the user query into ONE of these categories:
 
-1. conversational → greetings, acknowledgements, casual replies
-2. schema → asking about tables, columns, structure
-3. relationship → asking how tables are related
-4. data → asking for actual data or metrics
+1. conversational
+2. schema
+3. relationship
+4. data
+5. sql_generation
 
 User query:
 "{user_query}"
 
-Respond with ONLY one word:
-conversational OR schema OR relationship OR data
+Respond with ONLY one word.
 """
 
         response = client.chat.completions.create(
@@ -43,8 +46,7 @@ conversational OR schema OR relationship OR data
 
         intent = response.choices[0].message.content.strip().lower()
 
-        # Safety fallback
-        if intent not in ["conversational", "schema", "relationship", "data"]:
+        if intent not in ["conversational", "schema", "relationship", "data", "sql_generation"]:
             return "data"
 
         return intent

@@ -32,6 +32,40 @@ def remove_trailing_semicolon(sql: str):
 
 
 class SQLGenerator:
+    @staticmethod
+    def generate_sql_only(user_query, schema):
+
+        client = AIClient.get_client()
+
+        prompt = f"""
+    Generate ONLY a SQL query based on the user request.
+
+    Rules:
+    - DO NOT execute anything
+    - DO NOT add explanation
+    - Return ONLY SQL
+    - Prefer SELECT queries
+    - If user asks for UPDATE/DELETE, still generate SQL but DO NOT execute
+
+    Schema:
+    {schema}
+
+    User request:
+    {user_query}
+    """
+
+        response = client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+
+        sql = response.choices[0].message.content.strip()
+
+        if sql.startswith("```"):
+            sql = sql.replace("```sql", "").replace("```", "").strip()
+
+        return sql
 
     @staticmethod
     def generate_sql(user_query, schema, previous_sql=None, error_message=None):
