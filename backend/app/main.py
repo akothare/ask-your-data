@@ -87,7 +87,10 @@ def chat(request: QueryRequest):
             # Store last query
             SessionStore.set_last_query(session_id, sql)
 
-            chart = ChartService.analyze(result)
+            chart = None
+
+            if result and isinstance(result, list) and len(result) > 0:
+                chart = ChartService.analyze(result)
 
             formatted = ResponseFormatter.format(user_query, result)
 

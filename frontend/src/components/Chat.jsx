@@ -20,6 +20,7 @@ const Chat = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
   const handleSend = async () => {
 
     if (!input.trim() || loading) return;
@@ -49,7 +50,11 @@ const Chat = () => {
     } catch (error) {
       setMessages(prev => [
         ...prev,
-        { role: "ai", type: "text", text: "Something went wrong. Please try again." }
+        {
+          role: "ai",
+          type: "text",
+          text: "Something went wrong. Please try again."
+        }
       ]);
     }
 
@@ -80,28 +85,33 @@ const Chat = () => {
                 color: "#fff"
               }}
             >
+
+              {/* USER */}
               {msg.role === "user" && <span>{msg.text}</span>}
 
+              {/* AI */}
               {msg.role === "ai" && (
                 <>
 
-                  {/* 🔹 TEXT ONLY */}
+                  {/* TEXT ONLY */}
                   {msg.type === "text" && (
-                    <span>{msg.text}</span>
+                    <p style={styles.text}>{msg.text}</p>
                   )}
 
-                  {/* 🔹 SUMMARY (ONLY ONCE) */}
+                  {/* SUMMARY */}
                   {msg.summary && (
-                    <p style={{ marginBottom: "10px" }}>{msg.summary}</p>
+                    <p style={styles.summary}>{msg.summary}</p>
                   )}
 
-                  {/* 🔹 CHART */}
-                  {msg.chart && (
-                    <ChartView data={msg.content} config={msg.chart} />
-                  )}
+                  {/* CHART (SAFE) */}
+                  {msg.chart &&
+                    msg.content &&
+                    Array.isArray(msg.content) && (
+                      <ChartView data={msg.content} config={msg.chart} />
+                    )}
 
-                  {/* 🔹 TABLE */}
-                  {(!msg.chart && (msg.type === "table" || msg.type === "mixed")) && (
+                  {/* TABLE */}
+                  {(msg.type === "table" || msg.type === "mixed") && (
                     <DataTable data={msg.content} />
                   )}
 
@@ -180,8 +190,13 @@ const DataTable = ({ data }) => {
 const ChartView = ({ data, config }) => {
 
   if (!config) return null;
+  if (!data || !Array.isArray(data) || data.length === 0) return null;
 
   const { type, x, y } = config;
+
+  if (!x || !y || !(x in data[0]) || !(y in data[0])) {
+    return null;
+  }
 
   if (type === "line") {
     return (
@@ -224,7 +239,8 @@ const styles = {
     padding: "15px",
     fontSize: "20px",
     fontWeight: "bold",
-    borderBottom: "1px solid #1e293b"
+    borderBottom: "1px solid #1e293b",
+    textAlign: "center"
   },
   chatBox: {
     flex: 1,
@@ -240,7 +256,19 @@ const styles = {
   bubble: {
     padding: "12px 16px",
     borderRadius: "12px",
-    maxWidth: "70%"
+    maxWidth: "70%",
+    textAlign: "left",
+    lineHeight: "1.5"
+  },
+  text: {
+    margin: 0,
+    textAlign: "left"
+  },
+  summary: {
+    margin: "0 0 8px 0",
+    textAlign: "left",
+    fontSize: "14px",
+    color: "#e2e8f0"
   },
   loadingBubble: {
     padding: "10px",
