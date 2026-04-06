@@ -1,7 +1,3 @@
-from app.ai.client import AIClient
-from app.config.settings import settings
-
-
 class ResponseFormatter:
 
     @staticmethod
@@ -10,72 +6,52 @@ class ResponseFormatter:
         if not data or len(data) == 0:
             return {
                 "type": "text",
-                "content": "No data found for your query."
+                "content": "No data found"
             }
 
-        # Small dataset
-        if len(data) <= 5:
-            return {
-                "type": "text",
-                "content": ResponseFormatter.generate_summary(user_query, data)
-            }
+        # 🔹 If multiple rows → create readable summary
+        summary_lines = []
 
-        # Medium dataset
-        if len(data) <= 50:
-            return {
-                "type": "mixed",
-                "summary": ResponseFormatter.generate_summary(user_query, data),
-                "data": data
-            }
+        # Try to detect customer-order structure
+        if "CUSTOMER_NAME" in data[0]:
 
-        # Large dataset
+            customer_map = {}
+
+            for row in data:
+                name = row.get("CUSTOMER_NAME")
+
+                if name not in customer_map:
+                    customer_map[name] = []
+
+                customer_map[name].append(row)
+
+            # Build per-customer summary
+            for name, orders in customer_map.items():
+
+                total = sum(o.get("AMOUNT", 0) for o in orders)
+
+                status_counts = {}
+                for o in orders:
+                    status = o.get("STATUS", "").lower()
+                    status_counts[status] = status_counts.get(status, 0) + 1
+
+                status_text = ", ".join([
+                    f"{count} {status}"
+                    for status, count in status_counts.items()
+                ])
+
+                line = f"{name} placed {len(orders)} order(s) totaling {round(total, 2)} ({status_text})"
+
+                summary_lines.append(line)
+
+        else:
+            # Generic fallback
+            summary_lines.append(f"Returned {len(data)} records.")
+
+        summary = "Here’s what I found:\n\n" + "\n\n".join(summary_lines)
+
         return {
-            "type": "table",
+            "type": "mixed",
+            "summary": summary,
             "data": data
         }
-
-    @staticmethod
-    def truncate_data_for_ai(data):
-
-        limited = data[:5]
-
-        trimmed = []
-        for row in limited:
-            new_row = {}
-            for k, v in row.items():
-                val = str(v)
-                if len(val) > 50:
-                    val = val[:50] + "..."
-                new_row[k] = val
-            trimmed.append(new_row)
-
-        return trimmed
-
-    @staticmethod
-    def generate_summary(user_query, data):
-
-        client = AIClient.get_client()
-
-        safe_data = ResponseFormatter.truncate_data_for_ai(data)
-
-        prompt = f"""
-You are a helpful assistant.
-
-User question:
-{user_query}
-
-Data:
-{safe_data}
-
-Generate a short, natural language summary.
-Do not mention SQL.
-Be concise.
-"""
-
-        response = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-
-        return response.choices[0].message.content.strip()
