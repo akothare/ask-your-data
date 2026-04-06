@@ -14,6 +14,10 @@ from app.services.schema_selector import SchemaSelector
 from app.services.schema_explainer import SchemaExplainer
 from app.services.intent_classifier import IntentClassifier
 
+# 🔥 NEW IMPORTS
+from app.services.sql_explainer import SQLExplainer
+from app.services.explanation_builder import ExplanationBuilder
+
 app = FastAPI()
 
 app.add_middleware(
@@ -47,7 +51,6 @@ def chat(request: QueryRequest):
     print("\n--- NEW REQUEST ---")
     print("SESSION:", session_id)
 
-    # 🔥 INTENT
     intent = IntentClassifier.classify(user_query)
     print("INTENT:", intent)
 
@@ -122,7 +125,7 @@ def chat(request: QueryRequest):
         }
 
     # =========================================================
-    # 🔹 DATA QUERY
+    # 🔹 DATA QUERY + EXPLANATION
     # =========================================================
 
     previous_sql = SessionStore.get_last_query(session_id)
@@ -151,8 +154,27 @@ def chat(request: QueryRequest):
 
     formatted = ResponseFormatter.format(user_query, result)
 
+    # 🔥 EXPLANATION
+    steps = SQLExplainer.explain(sql)
+
+    if formatted["type"] == "text":
+        explanation_text = ExplanationBuilder.build(
+            formatted.get("content"),
+            steps
+        )
+    else:
+        explanation_text = ExplanationBuilder.build(
+            formatted.get("summary"),
+            steps
+        )
+
     return {
-        "response": formatted,
+        "response": {
+            "type": formatted["type"],
+            "content": formatted.get("data"),
+            "summary": explanation_text,
+            "text": explanation_text
+        },
         "chart": chart,
         "session_id": session_id
     }
