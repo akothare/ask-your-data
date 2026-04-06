@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from app.db.schema_loader import SchemaLoader
 from app.ai.sql_generator import SQLGenerator
+from app.services.chart_service import ChartService
 from app.services.query_executor import QueryExecutor
 from app.services.sql_validator import SQLValidator
 from app.services.relationship_explainer import RelationshipExplainer
@@ -71,8 +72,11 @@ def chat(request: QueryRequest):
             # 🔥 Store for next turn
             SessionStore.set_last_query(session_id, sql)
 
+            chart = ChartService.analyze(result)
+
             return {
                 "data": result,
+                "chart": chart,
                 "session_id": session_id
             }
 

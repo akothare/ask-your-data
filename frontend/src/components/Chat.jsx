@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { sendMessage } from "../services/api";
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
+  BarChart, Bar
+} from "recharts";
 
 const Chat = () => {
 
@@ -23,8 +27,12 @@ const Chat = () => {
         aiMessage = { role: "ai", type: "text", content: response.answer };
 
       } else if (response.data) {
-        aiMessage = { role: "ai", type: "table", content: response.data };
-
+        aiMessage = {
+          role: "ai",
+          type: response.chart ? "chart" : "table",
+          content: response.data,
+          chart: response.chart
+        };
       } else {
         aiMessage = { role: "ai", type: "text", content: response.error };
       }
@@ -64,6 +72,10 @@ const Chat = () => {
 
             {msg.role === "ai" && msg.type === "table" && (
               <DataTable data={msg.content} />
+            )}
+
+            {msg.role === "ai" && msg.type === "chart" && (
+              <ChartView data={msg.content} config={msg.chart} />
             )}
 
           </div>
@@ -121,6 +133,39 @@ const DataTable = ({ data }) => {
       </table>
     </div>
   );
+};
+
+const ChartView = ({ data, config }) => {
+
+  if (!config) return null;
+
+  const { type, x, y } = config;
+
+  if (type === "line") {
+    return (
+      <LineChart width={500} height={300} data={data}>
+        <CartesianGrid stroke="#ccc" />
+        <XAxis dataKey={x} />
+        <YAxis />
+        <Tooltip />
+        <Line type="monotone" dataKey={y} />
+      </LineChart>
+    );
+  }
+
+  if (type === "bar") {
+    return (
+      <BarChart width={500} height={300} data={data}>
+        <CartesianGrid stroke="#ccc" />
+        <XAxis dataKey={x} />
+        <YAxis />
+        <Tooltip />
+        <Bar dataKey={y} />
+      </BarChart>
+    );
+  }
+
+  return null;
 };
 
 
