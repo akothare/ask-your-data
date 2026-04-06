@@ -23,18 +23,25 @@ const Chat = () => {
 
       let aiMessage;
 
-      if (response.answer) {
-        aiMessage = { role: "ai", type: "text", content: response.answer };
+      const res = response.response;
 
-      } else if (response.data) {
+      if (res.type === "text") {
+        aiMessage = { role: "ai", type: "text", content: res.content };
+
+      } else if (res.type === "mixed") {
         aiMessage = {
           role: "ai",
-          type: response.chart ? "chart" : "table",
-          content: response.data,
-          chart: response.chart
+          type: "mixed",
+          summary: res.summary,
+          data: res.data
         };
-      } else {
-        aiMessage = { role: "ai", type: "text", content: response.error };
+
+      } else if (res.type === "table") {
+        aiMessage = {
+          role: "ai",
+          type: "table",
+          content: res.data
+        };
       }
 
       setMessages(prev => [...prev, aiMessage]);
@@ -76,6 +83,13 @@ const Chat = () => {
 
             {msg.role === "ai" && msg.type === "chart" && (
               <ChartView data={msg.content} config={msg.chart} />
+            )}
+
+            {msg.role === "ai" && msg.type === "mixed" && (
+              <>
+                <p>{msg.summary}</p>
+                <DataTable data={msg.data} />
+              </>
             )}
 
           </div>

@@ -5,6 +5,7 @@ from app.db.schema_loader import SchemaLoader
 from app.ai.sql_generator import SQLGenerator
 from app.services.chart_service import ChartService
 from app.services.query_executor import QueryExecutor
+from app.services.response_formatter import ResponseFormatter
 from app.services.sql_validator import SQLValidator
 from app.services.relationship_explainer import RelationshipExplainer
 from app.services.session_store import SessionStore
@@ -74,8 +75,10 @@ def chat(request: QueryRequest):
 
             chart = ChartService.analyze(result)
 
+            formatted = ResponseFormatter.format(user_query, result)
+
             return {
-                "data": result,
+                "response": formatted,
                 "chart": chart,
                 "session_id": session_id
             }
