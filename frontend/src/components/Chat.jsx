@@ -16,7 +16,6 @@ const Chat = () => {
 
   const chatEndRef = useRef(null);
 
-  // Auto scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
@@ -33,7 +32,6 @@ const Chat = () => {
 
     try {
       const response = await sendMessage(input, sessionId);
-
       const res = response.response;
 
       let aiMessage = {
@@ -41,7 +39,8 @@ const Chat = () => {
         type: res.type,
         content: res.data || null,
         summary: res.summary || null,
-        text: res.content || null,
+        text: res.text || res.content || null,
+        sql: res.sql || null,
         chart: response.chart || null
       };
 
@@ -93,11 +92,19 @@ const Chat = () => {
               {msg.role === "ai" && (
                 <>
 
-                  {/* TEXT ONLY */}
-                  {msg.type === "text" && (
-                    <pre style={styles.preText}>
-                      {msg.text}
-                    </pre>
+                  {/* SQL */}
+                  {msg.type === "sql" && (
+                    <>
+                      <p style={styles.text}>{msg.text}</p>
+                      <pre style={styles.codeBlock}>
+                        {msg.sql}
+                      </pre>
+                    </>
+                  )}
+
+                  {/* TEXT */}
+                  {msg.type === "text" && msg.text && (
+                    <p style={styles.text}>{msg.text}</p>
                   )}
 
                   {/* SUMMARY */}
@@ -105,7 +112,7 @@ const Chat = () => {
                     <p style={styles.summary}>{msg.summary}</p>
                   )}
 
-                  {/* CHART (SAFE) */}
+                  {/* CHART */}
                   {msg.chart &&
                     msg.content &&
                     Array.isArray(msg.content) && (
@@ -153,6 +160,7 @@ const Chat = () => {
 };
 
 
+// TABLE
 const DataTable = ({ data }) => {
 
   if (!data || data.length === 0) {
@@ -189,6 +197,7 @@ const DataTable = ({ data }) => {
 };
 
 
+// CHART
 const ChartView = ({ data, config }) => {
 
   if (!config) return null;
@@ -228,20 +237,18 @@ const ChartView = ({ data, config }) => {
 };
 
 
+// STYLES
 const styles = {
   container: {
     height: "100vh",
     display: "flex",
     flexDirection: "column",
     background: "#0f172a",
-    color: "#fff",
-    fontFamily: "Arial"
+    color: "#fff"
   },
   header: {
     padding: "15px",
     fontSize: "20px",
-    fontWeight: "bold",
-    borderBottom: "1px solid #1e293b",
     textAlign: "center"
   },
   chatBox: {
@@ -258,25 +265,21 @@ const styles = {
   bubble: {
     padding: "12px 16px",
     borderRadius: "12px",
-    maxWidth: "70%",
-    textAlign: "left",
-    lineHeight: "1.5"
+    maxWidth: "70%"
   },
   text: {
     margin: 0,
-    textAlign: "left"
-  },
-  preText: {
-    margin: 0,
-    whiteSpace: "pre-wrap",
-    fontFamily: "inherit",
-    lineHeight: "1.5"
+    whiteSpace: "pre-wrap"
   },
   summary: {
     margin: "0 0 8px 0",
-    textAlign: "left",
-    fontSize: "14px",
     color: "#e2e8f0"
+  },
+  codeBlock: {
+    background: "#020617",
+    padding: "12px",
+    borderRadius: "8px",
+    fontFamily: "monospace"
   },
   loadingBubble: {
     padding: "10px",
@@ -285,34 +288,25 @@ const styles = {
   },
   inputContainer: {
     display: "flex",
-    padding: "15px",
-    borderTop: "1px solid #1e293b"
+    padding: "15px"
   },
   input: {
     flex: 1,
-    padding: "12px",
-    borderRadius: "8px",
-    border: "none",
-    outline: "none",
-    marginRight: "10px"
+    padding: "12px"
   },
   button: {
     padding: "12px 20px",
     background: "#2563eb",
     color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer"
+    border: "none"
   },
   table: {
     borderCollapse: "collapse",
-    width: "100%",
-    marginTop: "10px"
+    width: "100%"
   },
   th: {
     border: "1px solid #334155",
-    padding: "8px",
-    background: "#334155"
+    padding: "8px"
   },
   td: {
     border: "1px solid #334155",
