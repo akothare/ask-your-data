@@ -96,9 +96,12 @@ const Chat = () => {
                   {msg.type === "sql" && (
                     <>
                       <p style={styles.text}>{msg.text}</p>
-                      <pre style={styles.codeBlock}>
-                        {msg.sql}
-                      </pre>
+
+                      <div style={styles.codeContainer}>
+                        <pre style={styles.codeBlock}>
+                          {msg.sql}
+                        </pre>
+                      </div>
                     </>
                   )}
 
@@ -272,15 +275,25 @@ const styles = {
     whiteSpace: "pre-wrap"
   },
   summary: {
-    margin: "0 0 8px 0",
+    margin: "8px 0",
     color: "#e2e8f0"
   },
+
+  // 🔥 NEW
+  codeContainer: {
+    overflowX: "auto",
+    marginTop: "10px"
+  },
+
   codeBlock: {
     background: "#020617",
     padding: "12px",
     borderRadius: "8px",
-    fontFamily: "monospace"
+    fontFamily: "monospace",
+    whiteSpace: "pre",   // 🔥 IMPORTANT (no wrapping)
+    minWidth: "max-content" // 🔥 prevents shrink
   },
+
   loadingBubble: {
     padding: "10px",
     background: "#1e293b",
